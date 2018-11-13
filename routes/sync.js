@@ -7,12 +7,15 @@ require('dotenv').config();
 
 const router = express.Router();
 
+const axiosInstance = axios.create({
+  baseURL: 'http://api.etherscan.io/api?module=account&sort=asc&',
+});
+
 router.get('/:address', (req, res) => {
   // TODO: need to move code below into another file?
-  // TODO: need to hard code the same part of the API
   // TODO: maybe use async await? need to resolve all promises before sending back info
 
-  axios.get(`http://api.etherscan.io/api?module=account&action=balance&address=${req.params.address}&sort=asc&apikey=${process.env.etherscanAPIkey}`)
+  axiosInstance.get(`&action=balance&address=${req.params.address}&apikey=${process.env.etherscanAPIkey}`)
     .then((response) => {
       Account
         .findOneAndUpdate(
@@ -36,7 +39,7 @@ router.get('/:address', (req, res) => {
     .catch((error) => {
       console.log(error);
     });
-  axios.get(`http://api.etherscan.io/api?module=account&action=txlist&address=${req.params.address}&sort=asc&apikey=${process.env.etherscanAPIkey}`)
+  axiosInstance.get(`&action=txlist&address=${req.params.address}&apikey=${process.env.etherscanAPIkey}`)
     .then((response) => {
       console.log(response.data.result);
       const resp = [];
@@ -45,7 +48,7 @@ router.get('/:address', (req, res) => {
           { _id: req.params.address },
           {
             $set:
-            { address: req.params.address, transactions: response.data.result.map(tx => tx.hash) },
+              { address: req.params.address, transactions: response.data.result.map(tx => tx.hash) },
           },
           { upsert: true, new: true },
         )
@@ -61,6 +64,8 @@ router.get('/:address', (req, res) => {
           _id: response.data.result[i].hash,
           from: response.data.result[i].from,
           to: response.data.result[i].to,
+          blockNumber: response.data.result[i].blockNumber,
+          value: response.data.result[i].value,
         });
         transaction
           .save()
